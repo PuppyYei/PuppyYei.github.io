@@ -1,0 +1,439 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>壁纸&amp;课件上传工具</title>
+<style>
+  body{
+    margin:0;
+    background:#f5f5f5;
+    font-family:Arial, "PingFang SC", "Microsoft YaHei", sans-serif;
+    color:#222;
+  }
+  .container{
+    max-width:1100px;
+    margin:auto;
+    padding:20px;
+  }
+  .card{
+    background:#fff;
+    border-radius:14px;
+    padding:20px;
+    box-shadow:0 2px 12px rgba(0,0,0,.08);
+    margin-bottom:18px;
+  }
+  h1{
+    margin:0 0 10px;
+    font-size:28px;
+  }
+  .sub{
+    margin:0 0 18px;
+    color:#666;
+    line-height:1.6;
+  }
+  .grid{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:18px;
+  }
+  @media (max-width: 900px){
+    .grid{ grid-template-columns:1fr; }
+  }
+  .section-title{
+    margin:0 0 10px;
+    font-size:20px;
+  }
+  .upload-box{
+    border:2px dashed #cfcfcf;
+    border-radius:12px;
+    padding:40px 16px;
+    text-align:center;
+    background:#fafafa;
+    cursor:pointer;
+    transition:.2s;
+    user-select:none;
+  }
+  .upload-box:hover{
+    background:#f0f0f0;
+  }
+  .upload-box.drag{
+    border-color:#c71d23;
+    background:#fff5f5;
+  }
+  input[type=file]{
+    display:none;
+  }
+  button{
+    background:#c71d23;
+    color:#fff;
+    border:none;
+    padding:12px 22px;
+    border-radius:10px;
+    cursor:pointer;
+    font-size:16px;
+    margin-top:14px;
+  }
+  button:hover{ opacity:.92; }
+  button:disabled{
+    opacity:.6;
+    cursor:not-allowed;
+  }
+  .status{
+    margin-top:18px;
+    padding:12px 14px;
+    background:#f1f1f1;
+    border-radius:10px;
+    white-space:pre-wrap;
+    line-height:1.6;
+  }
+  .list{
+    margin-top:16px;
+    display:grid;
+    grid-template-columns:repeat(auto-fill, minmax(220px, 1fr));
+    gap:14px;
+  }
+  .item{
+    background:#fff;
+    border:1px solid #eee;
+    border-radius:12px;
+    overflow:hidden;
+    box-shadow:0 1px 8px rgba(0,0,0,.05);
+  }
+  .thumb{
+    width:100%;
+    height:150px;
+    background:#fafafa;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    overflow:hidden;
+    border-bottom:1px solid #eee;
+  }
+  .thumb img{
+    width:100%;
+    height:100%;
+    object-fit:cover;
+    display:block;
+  }
+  .fileicon{
+    font-size:42px;
+    color:#999;
+  }
+  .info{
+    padding:10px 12px 12px;
+  }
+  .name{
+    font-size:14px;
+    font-weight:600;
+    word-break:break-all;
+    line-height:1.4;
+  }
+  .meta{
+    margin-top:6px;
+    font-size:12px;
+    color:#666;
+    line-height:1.5;
+    word-break:break-all;
+  }
+  .link{
+    width:100%;
+    box-sizing:border-box;
+    margin-top:10px;
+    padding:8px 9px;
+    font-size:12px;
+    border:1px solid #ddd;
+    border-radius:8px;
+  }
+  .small{
+    font-size:12px;
+    color:#888;
+    margin-top:8px;
+  }
+</style>
+</head>
+<body>
+<div class="container">
+  <div class="card">
+    <div class="grid">
+      <div class="card" style="margin:0;">
+        <h2 class="section-title">壁纸上传</h2>
+        <div class="upload-box" id="imageBox">
+          点击或拖拽壁纸到这里
+          <div class="small">支持多张壁纸</div>
+        </div>
+        <input type="file" id="imageInput" multiple accept="image/*">
+        <button id="imageUploadBtn" onclick="uploadImages()">上传壁纸</button>
+        <div class="status" id="imageStatus">等待选择壁纸...</div>
+        <div class="list" id="imagePreview"></div>
+      </div>
+
+      <div class="card" style="margin:0;">
+        <h2 class="section-title">任意文件上传</h2>
+        <div class="upload-box" id="fileBox">
+          点击或拖拽任意文件到这里
+          <div class="small">支持多文件</div>
+        </div>
+        <input type="file" id="fileInput" multiple>
+        <button id="fileUploadBtn" onclick="uploadFiles()">上传文件</button>
+        <div class="status" id="fileStatus">等待选择文件...</div>
+        <div class="list" id="filePreview"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const CONFIG = {
+  owner: "PuppyYei",
+  repo: "wallpaper-warehouse-of-class-7",
+  token: "02d8e1b73d2c6f078d7f47f32367cd7e",
+  branch: "master",
+  wallpaperDir: "wallpaper",
+  filesDir: "files"
+};
+
+const imageBox = document.getElementById("imageBox");
+const imageInput = document.getElementById("imageInput");
+const imagePreview = document.getElementById("imagePreview");
+const imageStatus = document.getElementById("imageStatus");
+const imageUploadBtn = document.getElementById("imageUploadBtn");
+
+const fileBox = document.getElementById("fileBox");
+const fileInput = document.getElementById("fileInput");
+const filePreview = document.getElementById("filePreview");
+const fileStatus = document.getElementById("fileStatus");
+const fileUploadBtn = document.getElementById("fileUploadBtn");
+
+let imageFiles = [];
+let otherFiles = [];
+
+imageBox.onclick = () => imageInput.click();
+fileBox.onclick = () => fileInput.click();
+
+imageInput.onchange = e => addImageFiles(e.target.files);
+fileInput.onchange = e => addOtherFiles(e.target.files);
+
+bindDrag(imageBox, files => addImageFiles(files));
+bindDrag(fileBox, files => addOtherFiles(files));
+
+function bindDrag(box, onDropFiles){
+  box.addEventListener("dragover", e => {
+    e.preventDefault();
+    box.classList.add("drag");
+  });
+  box.addEventListener("dragleave", () => {
+    box.classList.remove("drag");
+  });
+  box.addEventListener("drop", e => {
+    e.preventDefault();
+    box.classList.remove("drag");
+    onDropFiles(e.dataTransfer.files);
+  });
+}
+
+function setStatus(el, text){
+  el.innerText = text;
+}
+
+function formatSize(bytes){
+  if(bytes < 1024) return bytes + " B";
+  if(bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + " KB";
+  if(bytes < 1024 * 1024 * 1024) return (bytes / 1024 / 1024).toFixed(1) + " MB";
+  return (bytes / 1024 / 1024 / 1024).toFixed(1) + " GB";
+}
+
+function escapeHtml(str){
+  return String(str)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
+function safeFileName(name){
+  const lastDot = name.lastIndexOf(".");
+  const ext = lastDot >= 0 ? name.slice(lastDot) : "";
+  const base = lastDot >= 0 ? name.slice(0, lastDot) : name;
+
+  const safeBase = base
+    .replace(/[\\/:*?"<>|]+/g, "_")
+    .replace(/\s+/g, "_")
+    .replace(/[^\w\u4e00-\u9fa5.-]/g, "_")
+    .replace(/_+/g, "_")
+    .slice(0, 80) || "file";
+
+  const safeExt = ext
+    .replace(/[\\/:*?"<>|]+/g, "")
+    .replace(/\s+/g, "")
+    .slice(0, 10);
+
+  return `${Date.now()}-${Math.random().toString(36).slice(2, 8)}-${safeBase}${safeExt}`;
+}
+
+function addImageFiles(selected){
+  for(const file of selected){
+    if(!file.type.startsWith("image/")) continue;
+    imageFiles.push(file);
+
+    const item = document.createElement("div");
+    item.className = "item";
+    item.innerHTML = `
+      <div class="thumb"><img src="${URL.createObjectURL(file)}" alt=""></div>
+      <div class="info">
+        <div class="name">${escapeHtml(file.name)}</div>
+        <div class="meta">
+          类型：${escapeHtml(file.type || "未知")}<br>
+          大小：${formatSize(file.size)}
+        </div>
+      </div>
+    `;
+    imagePreview.appendChild(item);
+  }
+  setStatus(imageStatus, `已选择 ${imageFiles.length} 张图片`);
+}
+
+function addOtherFiles(selected){
+  for(const file of selected){
+    otherFiles.push(file);
+
+    const item = document.createElement("div");
+    item.className = "item";
+    const isImage = file.type.startsWith("image/");
+    item.innerHTML = `
+      <div class="thumb">
+        ${isImage ? `<img src="${URL.createObjectURL(file)}" alt="">` : `<div class="fileicon">📄</div>`}
+      </div>
+      <div class="info">
+        <div class="name">${escapeHtml(file.name)}</div>
+        <div class="meta">
+          类型：${escapeHtml(file.type || "未知")}<br>
+          大小：${formatSize(file.size)}
+        </div>
+      </div>
+    `;
+    filePreview.appendChild(item);
+  }
+  setStatus(fileStatus, `已选择 ${otherFiles.length} 个文件`);
+}
+
+function fileToBase64(file){
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      try{
+        const result = String(reader.result || "");
+        const base64 = result.includes(",") ? result.split(",")[1] : "";
+        resolve(base64);
+      }catch(err){
+        reject(err);
+      }
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+
+async function uploadToGitee(file, uploadDir, customNamePrefix = ""){
+  const base64 = await fileToBase64(file);
+  const fileName = safeFileName(customNamePrefix + file.name);
+  const path = `${uploadDir}/${fileName}`;
+  const url = `https://gitee.com/api/v5/repos/${encodeURIComponent(CONFIG.owner)}/${encodeURIComponent(CONFIG.repo)}/contents/${path}`;
+
+  const body = {
+    access_token: CONFIG.token,
+    content: base64,
+    message: `upload ${file.name}`,
+    branch: CONFIG.branch
+  };
+
+  const res = await fetch(url, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify(body)
+  });
+
+  const data = await res.json();
+  if(!res.ok || !data || !data.content){
+    throw new Error((data && (data.message || data.error)) || "上传失败");
+  }
+
+  const rawUrl = `https://gitee.com/${CONFIG.owner}/${CONFIG.repo}/raw/${CONFIG.branch}/${path}`;
+  return { rawUrl, path };
+}
+
+async function uploadImages(){
+  if(imageFiles.length === 0){
+    alert("请先选择图片");
+    return;
+  }
+
+  imageUploadBtn.disabled = true;
+  setStatus(imageStatus, "开始上传图片...");
+
+  const items = imagePreview.querySelectorAll(".item");
+  for(let i = 0; i < imageFiles.length; i++){
+    const file = imageFiles[i];
+    try{
+      setStatus(imageStatus, `上传图片中 ${i + 1}/${imageFiles.length}：${file.name}`);
+      const result = await uploadToGitee(file, CONFIG.wallpaperDir);
+
+      const link = document.createElement("input");
+      link.className = "link";
+      link.value = result.rawUrl;
+      link.readOnly = true;
+      link.onclick = () => link.select();
+
+      const meta = items[i].querySelector(".meta");
+      meta.innerHTML += `<br>上传路径：/${result.path}`;
+      items[i].querySelector(".info").appendChild(link);
+    }catch(err){
+      console.error(err);
+      alert(`图片上传失败：${file.name}\n${err.message || err}`);
+    }
+  }
+
+  setStatus(imageStatus, "图片全部上传完成");
+  imageUploadBtn.disabled = false;
+}
+
+async function uploadFiles(){
+  if(otherFiles.length === 0){
+    alert("请先选择文件");
+    return;
+  }
+
+  fileUploadBtn.disabled = true;
+  setStatus(fileStatus, "开始上传文件...");
+
+  const items = filePreview.querySelectorAll(".item");
+  for(let i = 0; i < otherFiles.length; i++){
+    const file = otherFiles[i];
+    try{
+      setStatus(fileStatus, `上传文件中 ${i + 1}/${otherFiles.length}：${file.name}`);
+      const result = await uploadToGitee(file, CONFIG.filesDir);
+
+      const link = document.createElement("input");
+      link.className = "link";
+      link.value = result.rawUrl;
+      link.readOnly = true;
+      link.onclick = () => link.select();
+
+      const meta = items[i].querySelector(".meta");
+      meta.innerHTML += `<br>上传路径：/${result.path}`;
+      items[i].querySelector(".info").appendChild(link);
+    }catch(err){
+      console.error(err);
+      alert(`文件上传失败：${file.name}\n${err.message || err}`);
+    }
+  }
+
+  setStatus(fileStatus, "文件全部上传完成");
+  fileUploadBtn.disabled = false;
+}
+</script>
+</body>
+</html>
