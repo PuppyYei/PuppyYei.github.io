@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>壁纸&amp;课件上传工具</title>
+<title>壁纸&课件上传工具</title>
 <style>
   body{
     margin:0;
@@ -26,11 +26,6 @@
   h1{
     margin:0 0 10px;
     font-size:28px;
-  }
-  .sub{
-    margin:0 0 18px;
-    color:#666;
-    line-height:1.6;
   }
   .grid{
     display:grid;
@@ -155,12 +150,14 @@
 <body>
 <div class="container">
   <div class="card">
+    <h1>壁纸&课件上传工具</h1>
+
     <div class="grid">
       <div class="card" style="margin:0;">
         <h2 class="section-title">壁纸上传</h2>
         <div class="upload-box" id="imageBox">
           点击或拖拽壁纸到这里
-          <div class="small">支持多张壁纸</div>
+          <div class="small">支持多张壁纸，上传后自动生成链接</div>
         </div>
         <input type="file" id="imageInput" multiple accept="image/*">
         <button id="imageUploadBtn" onclick="uploadImages()">上传壁纸</button>
@@ -172,7 +169,7 @@
         <h2 class="section-title">任意文件上传</h2>
         <div class="upload-box" id="fileBox">
           点击或拖拽任意文件到这里
-          <div class="small">支持多文件</div>
+          <div class="small">支持多文件，上传后自动生成链接</div>
         </div>
         <input type="file" id="fileInput" multiple>
         <button id="fileUploadBtn" onclick="uploadFiles()">上传文件</button>
@@ -186,9 +183,10 @@
 <script>
 const CONFIG = {
   owner: "PuppyYei",
-  repo: "wallpaper-warehouse-of-class-7",
   token: "02d8e1b73d2c6f078d7f47f32367cd7e",
   branch: "master",
+  wallpaperRepo: "wallpaper-warehouse-of-class-7",
+  fileRepo: "the-file-warehouse-of-class-7",
   wallpaperDir: "wallpaper",
   filesDir: "files"
 };
@@ -291,7 +289,7 @@ function addImageFiles(selected){
     `;
     imagePreview.appendChild(item);
   }
-  setStatus(imageStatus, `已选择 ${imageFiles.length} 张图片`);
+  setStatus(imageStatus, `已选择 ${imageFiles.length} 张壁纸`);
 }
 
 function addOtherFiles(selected){
@@ -335,11 +333,11 @@ function fileToBase64(file){
   });
 }
 
-async function uploadToGitee(file, uploadDir, customNamePrefix = ""){
+async function uploadToGitee(file, repo, uploadDir){
   const base64 = await fileToBase64(file);
-  const fileName = safeFileName(customNamePrefix + file.name);
+  const fileName = safeFileName(file.name);
   const path = `${uploadDir}/${fileName}`;
-  const url = `https://gitee.com/api/v5/repos/${encodeURIComponent(CONFIG.owner)}/${encodeURIComponent(CONFIG.repo)}/contents/${path}`;
+  const url = `https://gitee.com/api/v5/repos/${encodeURIComponent(CONFIG.owner)}/${encodeURIComponent(repo)}/contents/${path}`;
 
   const body = {
     access_token: CONFIG.token,
@@ -361,25 +359,25 @@ async function uploadToGitee(file, uploadDir, customNamePrefix = ""){
     throw new Error((data && (data.message || data.error)) || "上传失败");
   }
 
-  const rawUrl = `https://gitee.com/${CONFIG.owner}/${CONFIG.repo}/raw/${CONFIG.branch}/${path}`;
+  const rawUrl = `https://gitee.com/${CONFIG.owner}/${repo}/raw/${CONFIG.branch}/${path}`;
   return { rawUrl, path };
 }
 
 async function uploadImages(){
   if(imageFiles.length === 0){
-    alert("请先选择图片");
+    alert("请先选择壁纸");
     return;
   }
 
   imageUploadBtn.disabled = true;
-  setStatus(imageStatus, "开始上传图片...");
+  setStatus(imageStatus, "开始上传壁纸...");
 
   const items = imagePreview.querySelectorAll(".item");
   for(let i = 0; i < imageFiles.length; i++){
     const file = imageFiles[i];
     try{
-      setStatus(imageStatus, `上传图片中 ${i + 1}/${imageFiles.length}：${file.name}`);
-      const result = await uploadToGitee(file, CONFIG.wallpaperDir);
+      setStatus(imageStatus, `上传壁纸中 ${i + 1}/${imageFiles.length}：${file.name}`);
+      const result = await uploadToGitee(file, CONFIG.wallpaperRepo, CONFIG.wallpaperDir);
 
       const link = document.createElement("input");
       link.className = "link";
@@ -392,11 +390,11 @@ async function uploadImages(){
       items[i].querySelector(".info").appendChild(link);
     }catch(err){
       console.error(err);
-      alert(`图片上传失败：${file.name}\n${err.message || err}`);
+      alert(`壁纸上传失败：${file.name}\n${err.message || err}`);
     }
   }
 
-  setStatus(imageStatus, "图片全部上传完成");
+  setStatus(imageStatus, "壁纸全部上传完成");
   imageUploadBtn.disabled = false;
 }
 
@@ -414,7 +412,7 @@ async function uploadFiles(){
     const file = otherFiles[i];
     try{
       setStatus(fileStatus, `上传文件中 ${i + 1}/${otherFiles.length}：${file.name}`);
-      const result = await uploadToGitee(file, CONFIG.filesDir);
+      const result = await uploadToGitee(file, CONFIG.fileRepo, CONFIG.filesDir);
 
       const link = document.createElement("input");
       link.className = "link";
